@@ -64,9 +64,8 @@
       </div>
     </div>
     <div id="attendance-section" class="hidden">
-      <select id="client-name">
-        <option disabled selected>Select Client</option>
-      </select>
+<input list="client-list" id="client-name" placeholder="Search and select client" required>
+<datalist id="client-list"></datalist>
       <div style="display: flex; gap: 10px; margin-top: 10px;">
         <button onclick="markAttendance('In')">Mark In</button>
         <button onclick="markAttendance('Out')">Mark Out</button>
@@ -80,9 +79,8 @@
       <label>Date</label>
       <input type="date" id="ts-date">
       <label>Client Name</label>
-      <select id="ts-client">
-        <option disabled selected>Select Client</option>
-      </select>
+<input list="ts-client-list" id="ts-client" placeholder="Search and select client" required>
+<datalist id="ts-client-list"></datalist>
       <label>Hours Worked</label>
       <input type="number" id="ts-hours" min="0" step="0.25">
       <button onclick="submitTimesheet()">Save</button>
@@ -220,21 +218,24 @@ function handleRegister() {
       .catch(err => alert('Error submitting timesheet.'));
     }
 
-    function loadClients(selectId) {
-      fetch(scriptURL + '?action=getClients')
-        .then(response => response.json())
-        .then(data => {
-          const select = document.getElementById(selectId);
-          select.innerHTML = '<option disabled selected>Select Client</option>';
-          data.clients.forEach(client => {
-            const opt = document.createElement('option');
-            opt.value = client;
-            opt.textContent = client;
-            select.appendChild(opt);
-          });
-        })
-        .catch(err => console.error('Error loading clients:', err));
-    }
+function loadClients(inputId) {
+  fetch(scriptURL + '?action=getClients')
+    .then(response => response.json())
+    .then(data => {
+      if (!data.clients || data.clients.length === 0) return;
+
+      const datalistId = inputId === 'client-name' ? 'client-list' : 'ts-client-list';
+      const datalist = document.getElementById(datalistId);
+      datalist.innerHTML = ''; // clear old
+
+      data.clients.forEach(client => {
+        const option = document.createElement('option');
+        option.value = client;
+        datalist.appendChild(option);
+      });
+    })
+    .catch(err => console.error('Error loading clients:', err));
+}
 
     function showMISDashboard() {
       document.getElementById('main-menu').classList.add('hidden');
@@ -302,6 +303,25 @@ function markAttendance(status) {
     alert("Geolocation not supported.");
   }
 }
+
+function populateClientDropdown(selectId, clients) {
+  const dropdown = document.getElementById(selectId);
+  dropdown.innerHTML = '<option value="">-- Select Client --</option>';
+  clients.forEach(client => {
+    const opt = document.createElement('option');
+    opt.value = client;
+    opt.textContent = client;
+    dropdown.appendChild(opt);
+  });
+}
+
+function filterClients(inputId, selectId) {
+  const searchValue = document.getElementById(inputId).value.toLowerCase();
+  const filtered = allClients.filter(client => client.toLowerCase().includes(searchValue));
+  populateClientDropdown(selectId, filtered);
+}
+
+
   </script>
 </body>
 </html>
