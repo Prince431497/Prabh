@@ -139,6 +139,22 @@
           }
         })
         .catch(err => alert('Error during login. Please try again.'));
+      .then(data => {
+  if (data.status === 'success') {
+    currentUser = { name, code, role: data.role }; // ✅ Add role here
+    document.getElementById('welcome-msg').innerText = `Welcome, ${name}`;
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('main-menu').classList.remove('hidden');
+
+    // ✅ Hide MIS Dashboard button for non-admins
+    if (data.role !== 'Admin') {
+      document.querySelector("button[onclick='showMISDashboard()']").style.display = "none";
+    }
+
+  } else {
+    alert('Invalid credentials.');
+  }
+})
     }
 
 function handleRegister() {
