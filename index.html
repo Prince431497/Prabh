@@ -622,112 +622,143 @@
     function downloadAttendance() {
       const start = document.getElementById('att-start').value;
       const end = document.getElementById('att-end').value;
+const downloadBtn = document.querySelector('button[onclick="downloadAttendance()"]');
+
 
       if (!start || !end) {
-        alert("Please select both start and end dates.");
+        showMessage('attendance-message', 'Please select both start and end dates.', true);
         return;
       }
 
-      const downloadBtn = document.querySelector('button[onclick="downloadAttendance()"]');
+
+      if (new Date(start) > new Date(end)) {
+        showMessage('attendance-message', 'Start date cannot be after end date.', true);
+        return;
+      }
+
+
       setLoading(downloadBtn, true, "Downloading...");
 
+        
       fetch(`${scriptURL}?action=downloadAttendance&code=${currentUser.code}&start=${start}&end=${end}`)
-        .then(res => res.json())
+ .then(res => res.json())       
         .then(data => {
-          if (data.status === 'success' && data.fileUrl) {
-            const a = document.createElement('a');
-            a.href = data.fileUrl;
-            a.download = `Attendance_${currentUser.code}_${start}_to_${end}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+  if (data.status === 'no_data') {
+    alert(data.message);
+    return;
+  }        
+  
+          if (data.status === 'success'&& data.csvData) {
+const blob = new Blob([data.csvData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.filename || `Attendance_${currentUser.code}_${start}_${end}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);  
+alert("✅ Timesheet downloaded.");
+        backToMenu();
+      } else {
+        alert(data.message || "❌ Unable to download Attendance.");
+      }
+    })
+.catch(err => {
+      console.error(err);
+      alert("❌ Error downloading Attendance.");
+    })
+    .finally(() => setLoading(downloadBtn, false, "Download"));
+}          
 
-            alert("✅ Attendance downloaded.");
-            backToMenu();
-          } else {
-            alert(data.message || "❌ Unable to download attendance.");
-          }
-        })
-        .catch(err => {
-          alert("❌ Error while downloading attendance.");
-          console.error(err);
-        })
-        .finally(() => {
-          setLoading(downloadBtn, false, "Download");
-        });
-    }
+function downloadTimesheet() {
+  const start = document.getElementById('ts-start').value;
+  const end = document.getElementById('ts-end').value;
+  const downloadBtn = document.querySelector('button[onclick="downloadTimesheet()"]');
 
-    function downloadTimesheet() {
-      const start = document.getElementById('ts-start').value;
-      const end = document.getElementById('ts-end').value;
-      const downloadBtn = document.querySelector('button[onclick="downloadTimesheet()"]');
+  if (!start || !end) {
+    alert("Please select both start and end dates.");
+    return;
+  }
 
-      if (!start || !end) {
-        alert("Please select both start and end dates.");
+  setLoading(downloadBtn, true, "Downloading...");
+
+  fetch(`${scriptURL}?action=downloadTimesheet&code=${currentUser.code}&start=${start}&end=${end}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'no_data') {
+        alert(data.message);
         return;
       }
+      if (data.status === 'success' && data.csvData) {
+        // Create blob and download
+        const blob = new Blob([data.csvData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.filename || `Timesheet_${currentUser.code}_${start}_${end}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
 
-      setLoading(downloadBtn, true, "Downloading...");
+        alert("✅ Timesheet downloaded.");
+        backToMenu();
+      } else {
+        alert(data.message || "❌ Unable to download timesheet.");
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("❌ Error downloading timesheet.");
+    })
+    .finally(() => setLoading(downloadBtn, false, "Download"));
+}
 
-      fetch(`${scriptURL}?action=downloadTimesheet&code=${currentUser.code}&start=${start}&end=${end}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === 'success' && data.fileUrl) {
-            const a = document.createElement('a');
-            a.href = data.fileUrl;
-            a.download = `Timesheet_${currentUser.code}_${start}_to_${end}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
 
-            alert("✅ Timesheet downloaded.");
-            backToMenu();
-          } else {
-            alert(data.message || "❌ Unable to download timesheet.");
-          }
-        })
-        .catch(err => {
-          console.error(err);
-          alert("❌ Error downloading timesheet.");
-        })
-        .finally(() => setLoading(downloadBtn, false, "Download"));
-    }
+function downloadExpense() {
+  const start = document.getElementById('ts-start').value;
+  const end = document.getElementById('ts-end').value;
+  const downloadBtn = document.querySelector('button[onclick="downloadExpense()"]');
 
-    function downloadExpense() {
-      const start = document.getElementById('exp-start').value;
-      const end = document.getElementById('exp-end').value;
-      const downloadBtn = document.querySelector('button[onclick="downloadExpense()"]');
+  if (!start || !end) {
+    alert("Please select both start and end dates.");
+    return;
+  }
 
-      if (!start || !end) {
-        alert("Please select both start and end dates.");
+  setLoading(downloadBtn, true, "Downloading...");
+
+  fetch(`${scriptURL}?action=downloadExpense&code=${currentUser.code}&start=${start}&end=${end}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'no_data') {
+        alert(data.message);
         return;
       }
+      if (data.status === 'success' && data.csvData) {
+        // Create blob and download
+        const blob = new Blob([data.csvData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.filename || `Expense_${currentUser.code}_${start}_${end}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
 
-      setLoading(downloadBtn, true, "Downloading...");
-
-      fetch(`${scriptURL}?action=downloadExpense&code=${currentUser.code}&start=${start}&end=${end}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === 'success' && data.fileUrl) {
-            const a = document.createElement('a');
-            a.href = data.fileUrl;
-            a.download = `Expense_${currentUser.code}_${start}_to_${end}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            alert("✅ Expense report downloaded.");
-            backToMenu();
-          } else {
-            alert(data.message || "❌ Unable to download expense data.");
-          }
-        })
-        .catch(err => {
-          console.error(err);
-          alert("❌ Error downloading expense.");
-        })
-        .finally(() => setLoading(downloadBtn, false, "Download"));
-    }
+        alert("✅ Expense downloaded.");
+        backToMenu();
+      } else {
+        alert(data.message || "❌ Unable to download Expense.");
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("❌ Error downloading Expense.");
+    })
+    .finally(() => setLoading(downloadBtn, false, "Download"));
+}
   </script>
 </body>
 </html>
