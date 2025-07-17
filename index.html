@@ -121,17 +121,48 @@
       <button onclick="backToMenu()" style="background:#6c757d;margin-top:10px;">Back</button>
     </div>
 
-    <div id="mis-dashboard" class="hidden">
-      <h3>MIS Dashboard</h3>
-      <div id="mis-leads"></div>
-      <div id="mis-clients"></div>
-      <div id="mis-employees"></div>
-      <div id="mis-empclients"></div>
-      <button onclick="showTeamAllocation()" class="btn btn-outline-info btn-lg" style="margin-top: 15px;">
-        <i class="fas fa-users"></i> Team Allocation
-      </button>
-      <button onclick="backToMenu()" style="margin-top:20px; background:#6c757d;">Back</button>
-    </div>
+    <!-- Updated MIS Dashboard Section -->
+<div id="mis-dashboard" class="hidden">
+  <h3>MIS Dashboard</h3>
+  <div class="main-buttons">
+    <button onclick="showHoursBooked()" class="btn btn-outline-info btn-lg">
+      <i class="fas fa-clock"></i> Check Hours Booked
+    </button>
+    <button onclick="showEmployeeAttendance()" class="btn btn-outline-info btn-lg">
+      <i class="fas fa-users"></i> Check Employee Attendance
+    </button>
+    <button onclick="showTeamAllocation()" class="btn btn-outline-info btn-lg">
+      <i class="fas fa-users"></i> Team Allocation
+    </button>
+  </div>
+  <button onclick="backToMenu()" style="margin-top:20px; background:#6c757d;">Back</button>
+</div>
+
+<!-- Hours Booked Section -->
+<div id="hours-booked-section" class="hidden">
+  <h3>Hours Booked Report</h3>
+  <div id="hours-booked-content">
+    <div id="mis-leads"></div>
+    <div id="mis-clients"></div>
+    <div id="mis-employees"></div>
+  </div>
+  <button onclick="backToMIS()" style="background:#6c757d;margin-top:10px;">Back to MIS</button>
+</div>
+
+<!-- Employee Attendance Section -->
+<div id="employee-attendance-section" class="hidden">
+  <h3>Employee Attendance Check</h3>
+  <label>Select Date</label>
+  <input type="date" id="attendance-check-date" value="">
+  <button onclick="loadEmployeeAttendance()">Check Attendance</button>
+  
+  <div id="attendance-summary" style="margin-top: 20px;">
+    <div id="present-employees"></div>
+    <div id="absent-employees"></div>
+  </div>
+  
+  <button onclick="backToMIS()" style="background:#6c757d;margin-top:10px;">Back to MIS</button>
+</div>
 
     <!-- Team Allocation Section -->
     <div id="team-allocation-section" class="hidden">
@@ -282,11 +313,7 @@
       loadClients('exp-client');
     }
 
-    function showMISDashboard() {
-      hideAllSections();
-      document.getElementById('mis-dashboard').classList.remove('hidden');
-      loadMISDashboard();
-    }
+   
 
     function showChangePassword() {
       hideAllSections();
@@ -397,75 +424,7 @@
         .catch(err => console.error('Error loading clients:', err));
     }
 
-    function loadMISDashboard() {
-      fetch(scriptURL + '?action=misDashboard')
-        .then(res => res.json())
-        .then(data => {
-          document.getElementById('mis-leads').innerHTML = `<h4>Current Leads:</h4><ul>${data.leads.map(item => `<li>${item}</li>`).join('')}</ul>`;
-          document.getElementById('mis-clients').innerHTML = `<h4>Active Clients with Total Hours:</h4><table><tr><th>Client</th><th>Total Hours (Month)</th></tr>${data.clients.map((client, idx) => `<tr><td>${client}</td><td>${data.clientHours[idx]}</td></tr>`).join('')}</table>`;
-          document.getElementById('mis-employees').innerHTML = `<h4>Present Employees:</h4><table><tr><th>Employee</th><th>Client</th></tr>${data.presentEmployeeClients.map(row => `<tr><td>${row.name}</td><td>${row.client}</td></tr>`).join('')}</table>`;
-        })
-        .catch(err => {
-          console.error(err);
-          alert('Error loading MIS Dashboard.');
-        });
-    }
-
-    function loadTeamAllocation() {
-      const startDate = document.getElementById('team-start').value;
-      const endDate = document.getElementById('team-end').value;
-
-      if (!startDate || !endDate) {
-        alert('Please select both start and end dates.');
-        return;
-      }
-
-      const loadBtn = document.querySelector('button[onclick="loadTeamAllocation()"]');
-      setLoading(loadBtn, true, "Loading...");
-
-      fetch(scriptURL + `?action=teamAllocation&from=${startDate}&to=${endDate}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === 'success') {
-            displayTeamAllocation(data.rows);
-          } else {
-            alert(data.message || 'Error loading team allocation.');
-          }
-        })
-        .catch(err => {
-          console.error(err);
-          alert('Error loading team allocation.');
-        })
-        .finally(() => {
-          setLoading(loadBtn, false, "Load Team Data");
-        });
-    }
-
-    function displayTeamAllocation(rows) {
-      const tableContainer = document.getElementById('team-allocation-table');
-      if (!rows || rows.length === 0) {
-        tableContainer.innerHTML = '<p>No team allocation data found.</p>';
-        return;
-      }
-
-      let html = '<table><thead><tr>';
-      rows[0].forEach(header => {
-        html += `<th>${header}</th>`;
-      });
-      html += '</tr></thead><tbody>';
-
-      for (let i = 1; i < rows.length; i++) {
-        html += '<tr>';
-        rows[i].forEach(cell => {
-          html += `<td>${cell || ''}</td>`;
-        });
-        html += '</tr>';
-      }
-
-      html += '</tbody></table>';
-      tableContainer.innerHTML = html;
-    }
-
+    
     function markAttendance(status) {
       const client = document.getElementById('client-name').value;
       if (!client) {
@@ -607,7 +566,6 @@
             document.getElementById('exp-type').value = '';
             document.getElementById('exp-amount').value = '';
             document.getElementById('exp-remarks').value = '';
-            backToMenu();
           } else {
             alert(data.message || "❌ Submission failed.");
           }
@@ -758,6 +716,153 @@ function downloadExpense() {
       alert("❌ Error downloading Expense.");
     })
     .finally(() => setLoading(downloadBtn, false, "Download"));
+}
+
+// Updated MIS Dashboard Functions
+
+function showMISDashboard() {
+  hideAllSections();
+  document.getElementById('mis-dashboard').classList.remove('hidden');
+  // Don't load data automatically anymore - let user choose what to view
+}
+
+function showHoursBooked() {
+  hideAllSections();
+  document.getElementById('hours-booked-section').classList.remove('hidden');
+  loadHoursBookedData();
+}
+
+function showEmployeeAttendance() {
+  hideAllSections();
+  document.getElementById('employee-attendance-section').classList.remove('hidden');
+  // Set today's date as default
+  document.getElementById('attendance-check-date').value = new Date().toISOString().split('T')[0];
+}
+
+function loadHoursBookedData() {
+  fetch(scriptURL + '?action=misDashboard')
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('mis-leads').innerHTML = `<h4>Current Leads:</h4><ul>${data.leads.map(item => `<li>${item}</li>`).join('')}</ul>`;
+      document.getElementById('mis-clients').innerHTML = `<h4>Active Clients with Total Hours:</h4><table><tr><th>Client</th><th>Total Hours (Month)</th></tr>${data.clients.map((client, idx) => `<tr><td>${client}</td><td>${data.clientHours[idx]}</td></tr>`).join('')}</table>`;
+      document.getElementById('mis-employees').innerHTML = `<h4>Present Employees:</h4><table><tr><th>Employee</th><th>Client</th></tr>${data.presentEmployeeClients.map(row => `<tr><td>${row.name}</td><td>${row.client}</td></tr>`).join('')}</table>`;
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Error loading Hours Booked data.');
+    });
+}
+
+function loadEmployeeAttendance() {
+  const selectedDate = document.getElementById('attendance-check-date').value;
+  
+  if (!selectedDate) {
+    alert('Please select a date.');
+    return;
+  }
+
+  const loadBtn = document.querySelector('button[onclick="loadEmployeeAttendance()"]');
+  setLoading(loadBtn, true, "Loading...");
+
+  fetch(scriptURL + `?action=checkEmployeeAttendance&date=${selectedDate}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        displayEmployeeAttendance(data);
+      } else {
+        alert(data.message || 'Error loading employee attendance.');
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Error loading employee attendance.');
+    })
+    .finally(() => {
+      setLoading(loadBtn, false, "Check Attendance");
+    });
+}
+
+// Replace your displayEmployeeAttendance function in HTML with this:
+
+// Replace your displayEmployeeAttendance function with this corrected version:
+
+function displayEmployeeAttendance(data) {
+  const presentDiv = document.getElementById('present-employees');
+  const absentDiv = document.getElementById('absent-employees');
+  
+  // Debug: Log the received data to console
+  console.log('Received attendance data:', data);
+  
+  // Display Present Employees
+  if (data.presentEmployees && data.presentEmployees.length > 0) {
+    let presentHtml = '<h4 style="color: green;">Present Employees:</h4>';
+    presentHtml += '<table><tr><th>Employee Name</th><th>Client</th><th>Time In</th></tr>';
+    
+    data.presentEmployees.forEach(emp => {
+      presentHtml += `<tr>
+        <td>${emp.name || emp.employeeName || 'N/A'}</td>
+        <td>${emp.client || emp.clientName || 'N/A'}</td>
+        <td>${emp.timeIn || emp.time || emp.timestamp || 'N/A'}</td>
+      </tr>`;
+    });
+    
+    presentHtml += '</table>';
+    presentDiv.innerHTML = presentHtml;
+  } else {
+    presentDiv.innerHTML = '<h4 style="color: green;">Present Employees:</h4><p>No employees marked present.</p>';
+  }
+  
+  // Display Absent Employees
+  if (data.absentEmployees && data.absentEmployees.length > 0) {
+    let absentHtml = '<h4 style="color: red;">Absent Employees:</h4>';
+    absentHtml += '<table><tr><th>Employee Name</th></tr>';
+    
+    data.absentEmployees.forEach(emp => {
+      absentHtml += `<tr>
+        <td>${emp.name || emp.employeeName || 'N/A'}</td>
+      </tr>`;
+    });
+    
+    absentHtml += '</table>';
+    absentDiv.innerHTML = absentHtml;
+  } else {
+    absentDiv.innerHTML = '<h4 style="color: red;">Absent Employees:</h4><p>All active employees are present.</p>';
+  }
+}
+
+// Also update the loadEmployeeAttendance function to include better error handling:
+
+function loadEmployeeAttendance() {
+  const selectedDate = document.getElementById('attendance-check-date').value;
+  
+  if (!selectedDate) {
+    alert('Please select a date.');
+    return;
+  }
+
+  const loadBtn = document.querySelector('button[onclick="loadEmployeeAttendance()"]');
+  setLoading(loadBtn, true, "Loading...");
+
+  fetch(scriptURL + `?action=checkEmployeeAttendance&date=${selectedDate}`)
+    .then(res => res.json())
+    .then(data => {
+      console.log('Backend response:', data); // Debug log
+      
+      if (data.status === 'success') {
+        displayEmployeeAttendance(data);
+      } else {
+        alert(data.message || 'Error loading employee attendance.');
+        // Show debug info
+        console.error('Backend error:', data);
+      }
+    })
+    .catch(err => {
+      console.error('Fetch error:', err);
+      alert('Error loading employee attendance.');
+    })
+    .finally(() => {
+      setLoading(loadBtn, false, "Check Attendance");
+    });
 }
   </script>
 </body>
