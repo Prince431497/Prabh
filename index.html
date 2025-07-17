@@ -25,6 +25,16 @@
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
     th { background-color: #007bff; color: white; }
+    .spinner-border { display: inline-block; width: 1rem; height: 1rem; border: 2px solid currentColor; border-radius: 50%; border-right-color: transparent; animation: spin 0.75s linear infinite; }
+    .spinner-border-sm { width: 0.875rem; height: 0.875rem; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .me-2 { margin-right: 0.5rem; }
+    .btn-outline-info { background: transparent; border: 2px solid #17a2b8; color: #17a2b8; }
+    .btn-outline-info:hover { background: #17a2b8; color: white; }
+    .btn-lg { padding: 15px 25px; font-size: 18px; }
+    .team-allocation-table { max-width: 100%; overflow-x: auto; }
+    .team-allocation-table table { min-width: 600px; }
+    .team-allocation-table th, .team-allocation-table td { min-width: 100px; white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -35,42 +45,66 @@
       <input type="text" id="login-code" placeholder="Employee Code" required>
       <input type="password" id="login-password" placeholder="Password" required>
       <button onclick="handleLogin()">Login</button>
-      <p style="text-align:center; margin-top: 10px;">
-        <a href="#" onclick="toggleForm('register')">New user? Register here</a>
-      </p>
     </div>
-    <div id="register-form" class="hidden">
-<input type="text" id="reg-name" placeholder="Name" required>
-<input type="text" id="reg-code" placeholder="Employee Code" required>
-<input type="email" id="reg-email" placeholder="Email ID" required>
-<input type="tel" id="reg-mobile" placeholder="Mobile Number" required>
-<input type="date" id="reg-lastday" placeholder="Last Day of Articleship">
-<input type="text" id="reg-notes" placeholder="Other Important Info">
-<input type="password" id="reg-password" placeholder="Create Password" required>
-<button onclick="handleRegister()">Register</button>
-      
-      <p style="text-align:center; margin-top: 10px;">
-        <a href="#" onclick="toggleForm('login')">Already registered? Login</a>
-      </p>
-    </div>
+
     <div id="main-menu" class="hidden">
       <h3 id="welcome-msg"></h3>
       <div class="main-buttons">
         <button onclick="showAttendanceSection()">Attendance</button>
-        <button disabled>Out of Pocket Expense</button>
+        <button onclick="showExpenseSection()">Out of Pocket Expense</button>
         <button onclick="showTimesheetSection()">Timesheet</button>
         <button onclick="showMISDashboard()">MIS Dashboard</button>
-<button onclick="showChangePassword()">Change Password</button>
+        <button onclick="showChangePassword()">Change Password</button>
+        <button onclick="showTimesheetDownload()">Check Timesheet</button>
+        <button onclick="showExpenseDownload()">Check Expense</button>
       </div>
     </div>
+
     <div id="attendance-section" class="hidden">
-<input list="client-list" id="client-name" placeholder="Search and select client" required>
-<datalist id="client-list"></datalist>
+      <input list="client-list" id="client-name" placeholder="Search and select client" required>
+      <datalist id="client-list"></datalist>
+
       <div style="display: flex; gap: 10px; margin-top: 10px;">
         <button onclick="markAttendance('In')">Mark In</button>
         <button onclick="markAttendance('Out')">Mark Out</button>
       </div>
+      <button onclick="showAttendanceDownload()">Check Attendance</button>
+      <button onclick="backToMenu()" style="background:#6c757d;margin-top:10px;">Back</button>
     </div>
+
+    <!-- Attendance Download Section -->
+    <div id="attendance-download-section" class="hidden">
+      <h3>Download Attendance</h3>
+      <label>From Date</label>
+      <input type="date" id="att-start">
+      <label>To Date</label>
+      <input type="date" id="att-end">
+      <button onclick="downloadAttendance()">Download</button>
+      <button onclick="backToAttendance()" style="background:#6c757d;margin-top:10px;">Back</button>
+    </div>
+
+    <!-- Timesheet Download Section -->
+    <div id="timesheet-download-section" class="hidden">
+      <h3>Download Timesheet</h3>
+      <label>From Date</label>
+      <input type="date" id="ts-start">
+      <label>To Date</label>
+      <input type="date" id="ts-end">
+      <button onclick="downloadTimesheet()">Download</button>
+      <button onclick="backToMenu()" style="background:#6c757d;margin-top:10px;">Back</button>
+    </div>
+
+    <!-- Expense Download Section -->
+    <div id="expense-download-section" class="hidden">
+      <h3>Download Expenses</h3>
+      <label>From Date</label>
+      <input type="date" id="exp-start">
+      <label>To Date</label>
+      <input type="date" id="exp-end">
+      <button onclick="downloadExpense()">Download</button>
+      <button onclick="backToMenu()" style="background:#6c757d;margin-top:10px;">Back</button>
+    </div>
+
     <div id="timesheet-section" class="hidden">
       <label>Employee Name</label>
       <input type="text" id="ts-name" readonly>
@@ -79,130 +113,220 @@
       <label>Date</label>
       <input type="date" id="ts-date">
       <label>Client Name</label>
-<input list="ts-client-list" id="ts-client" placeholder="Search and select client" required>
-<datalist id="ts-client-list"></datalist>
+      <input list="ts-client-list" id="ts-client" placeholder="Search and select client" required>
+      <datalist id="ts-client-list"></datalist>
       <label>Hours Worked</label>
       <input type="number" id="ts-hours" min="0" step="0.25">
       <button onclick="submitTimesheet()">Save</button>
       <button onclick="backToMenu()" style="background:#6c757d;margin-top:10px;">Back</button>
     </div>
+
     <div id="mis-dashboard" class="hidden">
       <h3>MIS Dashboard</h3>
       <div id="mis-leads"></div>
       <div id="mis-clients"></div>
       <div id="mis-employees"></div>
       <div id="mis-empclients"></div>
+      <button onclick="showTeamAllocation()" class="btn btn-outline-info btn-lg" style="margin-top: 15px;">
+        <i class="fas fa-users"></i> Team Allocation
+      </button>
       <button onclick="backToMenu()" style="margin-top:20px; background:#6c757d;">Back</button>
     </div>
-<div id="change-password-section" class="hidden">
-  <h3>Change Password</h3>
-  <label>Employee Code</label>
-  <input type="text" id="cp-code" readonly>
-  <label>Old Password</label>
-  <input type="password" id="cp-old" required>
-  <label>New Password</label>
-  <input type="password" id="cp-new" required>
-  <button onclick="submitPasswordChange()">Change Password</button>
-  <button onclick="backToMenu()" style="background:#6c757d;margin-top:10px;">Back</button>
-</div>
+
+    <!-- Team Allocation Section -->
+    <div id="team-allocation-section" class="hidden">
+      <h3>Team Allocation</h3>
+      <label>From Date</label>
+      <input type="date" id="team-start">
+      <label>To Date</label>
+      <input type="date" id="team-end">
+      <button onclick="loadTeamAllocation()">Load Team Data</button>
+      <div id="team-allocation-table" class="team-allocation-table"></div>
+      <button onclick="backToMIS()" style="background:#6c757d;margin-top:10px;">Back to MIS</button>
+    </div>
+
+    <div id="change-password-section" class="hidden">
+      <h3>Change Password</h3>
+      <label>Employee Code</label>
+      <input type="text" id="cp-code" readonly>
+      <label>Old Password</label>
+      <input type="password" id="cp-old" required>
+      <label>New Password</label>
+      <input type="password" id="cp-new" required>
+      <button onclick="submitPasswordChange()">Change Password</button>
+      <button onclick="backToMenu()" style="background:#6c757d;margin-top:10px;">Back</button>
+    </div>
+
+    <!-- Out of Pocket Expense Section -->
+    <div id="expense-section" class="hidden">
+      <h3>Out of Pocket Expense</h3>
+      <label>Employee Name</label>
+      <input type="text" id="exp-name" readonly>
+      <label>Employee Code</label>
+      <input type="text" id="exp-code" readonly>
+      <label>Date</label>
+      <input type="date" id="exp-date" required>
+      <label>Client Name</label>
+      <input list="exp-client-list" id="exp-client" placeholder="Search and select client" required>
+      <datalist id="exp-client-list"></datalist>
+      <label>Expense Type</label>
+      <select id="exp-type" required>
+        <option value="">-- Select Type --</option>
+        <option value="Travel">Travel</option>
+        <option value="Food">Food</option>
+        <option value="Stationery">Stationery</option>
+        <option value="Accommodation">Accommodation</option>
+        <option value="Others">Others</option>
+      </select>
+      <label>Amount (₹)</label>
+      <input type="number" id="exp-amount" required>
+      <label>Remarks</label>
+      <input type="text" id="exp-remarks">
+      <button onclick="submitExpense()">Submit Expense</button>
+      <button onclick="backToMenu()" style="background:#6c757d;margin-top:10px;">Back</button>
+    </div>
   </div>
+
   <script>
+    function setLoading(button, isLoading, text) {
+      if (!button) return;
+
+      button.disabled = isLoading;
+      button.innerHTML = isLoading
+        ? `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${text}`
+        : text;
+    }
+
     const scriptURL = 'https://script.google.com/macros/s/AKfycbys-t3G0SpBnftPby7oGc6nFqdWlQ_NZdPwQwSlRHVS9OQdrRqQgyOlsXLWlJ7azfWW/exec';
     let currentUser = {};
 
     function toggleForm(type) {
       document.getElementById('form-title').innerText = type === 'register' ? 'Register' : 'Login';
       document.getElementById('login-form').classList.toggle('hidden', type === 'register');
-      document.getElementById('register-form').classList.toggle('hidden', type === 'login');
-      document.getElementById('main-menu').classList.add('hidden');
-      document.getElementById('attendance-section').classList.add('hidden');
-      document.getElementById('timesheet-section').classList.add('hidden');
-      document.getElementById('mis-dashboard').classList.add('hidden');
+      hideAllSections();
     }
 
-function handleLogin() {
-  const name = document.getElementById('login-name').value.trim();
-  const code = document.getElementById('login-code').value.trim();
-  const password = document.getElementById('login-password').value.trim();
+    function hideAllSections() {
+      const sections = [
+        'main-menu', 'attendance-section', 'timesheet-section', 'mis-dashboard', 
+        'attendance-download-section', 'timesheet-download-section', 'expense-download-section',
+        'change-password-section', 'expense-section', 'team-allocation-section'
+      ];
+      sections.forEach(section => {
+        document.getElementById(section).classList.add('hidden');
+      });
+    }
 
-  fetch(scriptURL + `?action=login&name=${encodeURIComponent(name)}&code=${encodeURIComponent(code)}&password=${encodeURIComponent(password)}`)
-    .then(response => response.json())
-    .then(data => {
-      if (data.status === 'success') {
-        const role = data.role || 'User'; // fallback to 'User' if role is missing
-        currentUser = { name, code, role };
-
-        document.getElementById('welcome-msg').innerText = `Welcome, ${name}`;
-        document.getElementById('login-form').classList.add('hidden');
-        document.getElementById('main-menu').classList.remove('hidden');
-
-        // ✅ Hide MIS Dashboard button if not Admin
-        if (role !== 'Admin') {
-          document.querySelector("button[onclick='showMISDashboard()']").style.display = "none";
-        }
-
-      } else {
-        alert('Invalid credentials.');
+    function handleLogin() {
+      const name = document.getElementById('login-name').value.trim();
+      const code = document.getElementById('login-code').value.trim();
+      const password = document.getElementById('login-password').value.trim();
+      const loginBtn = document.querySelector('button[onclick="handleLogin()"]');
+      
+      if (!name || !code || !password) {
+        alert('Please fill in all fields.');
+        return;
       }
-    })
-    .catch(err => {
-      console.error(err);
-      alert('Error during login. Please try again.');
-    });
-}
 
-function handleRegister() {
-  const name = document.getElementById('reg-name').value.trim();
-  const code = document.getElementById('reg-code').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const mobile = document.getElementById('reg-mobile').value.trim();
-  const lastday = document.getElementById('reg-lastday').value;
-  const notes = document.getElementById('reg-notes').value.trim();
-  const password = document.getElementById('reg-password').value.trim();
+      setLoading(loginBtn, true, "Wait, Logging in...");
 
-  if (!name || !code || !email || !mobile || !password) {
-    alert("Please fill all required fields.");
-    return;
-  }
+      fetch(scriptURL + `?action=login&name=${encodeURIComponent(name)}&code=${encodeURIComponent(code)}&password=${encodeURIComponent(password)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            const role = data.role || 'User';
+            currentUser = { name, code, role };
 
-  fetch(scriptURL, {
-    method: 'POST',
-    body: new URLSearchParams({
-      action: 'register',
-      name, code, email, mobile, lastday, notes, password
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.status === 'success') {
-      alert('Registration successful. Please log in.');
-      toggleForm('login');
-    } else {
-      alert(data.message || 'Registration failed.');
+            document.getElementById('welcome-msg').innerText = `Welcome, ${name}`;
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+
+            // Hide MIS Dashboard button if not Admin
+            const misDashboardBtn = document.querySelector("button[onclick='showMISDashboard()']");
+            if (role !== 'Admin' && misDashboardBtn) {
+              misDashboardBtn.style.display = "none";
+            }
+
+          } else {
+            alert('Invalid credentials.');
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert('Error during login. Please try again.');
+        })
+        .finally(() => {
+          setLoading(loginBtn, false, "Login");
+        });
     }
-  })
-  .catch(err => alert('Error during registration. Please try again.'));
-}
     
     function showAttendanceSection() {
+      hideAllSections();
       document.getElementById('attendance-section').classList.remove('hidden');
-      document.getElementById('main-menu').classList.add('hidden');
       loadClients('client-name');
     }
 
     function showTimesheetSection() {
-      document.getElementById('main-menu').classList.add('hidden');
+      hideAllSections();
       document.getElementById('timesheet-section').classList.remove('hidden');
       document.getElementById('ts-name').value = currentUser.name;
       document.getElementById('ts-code').value = currentUser.code;
       loadClients('ts-client');
     }
 
+    function showExpenseSection() {
+      hideAllSections();
+      document.getElementById('expense-section').classList.remove('hidden');
+      document.getElementById('exp-name').value = currentUser.name;
+      document.getElementById('exp-code').value = currentUser.code;
+      loadClients('exp-client');
+    }
+
+    function showMISDashboard() {
+      hideAllSections();
+      document.getElementById('mis-dashboard').classList.remove('hidden');
+      loadMISDashboard();
+    }
+
+    function showChangePassword() {
+      hideAllSections();
+      document.getElementById('change-password-section').classList.remove('hidden');
+      document.getElementById('cp-code').value = currentUser.code;
+    }
+
+    function showTimesheetDownload() {
+      hideAllSections();
+      document.getElementById('timesheet-download-section').classList.remove('hidden');
+    }
+
+    function showExpenseDownload() {
+      hideAllSections();
+      document.getElementById('expense-download-section').classList.remove('hidden');
+    }
+
+    function showAttendanceDownload() {
+      hideAllSections();
+      document.getElementById('attendance-download-section').classList.remove('hidden');
+    }
+
+    function showTeamAllocation() {
+      hideAllSections();
+      document.getElementById('team-allocation-section').classList.remove('hidden');
+    }
+
     function backToMenu() {
-      document.getElementById('attendance-section').classList.add('hidden');
-      document.getElementById('timesheet-section').classList.add('hidden');
-      document.getElementById('mis-dashboard').classList.add('hidden');
+      hideAllSections();
       document.getElementById('main-menu').classList.remove('hidden');
+    }
+
+    function backToAttendance() {
+      hideAllSections();
+      document.getElementById('attendance-section').classList.remove('hidden');
+    }
+
+    function backToMIS() {
+      hideAllSections();
+      document.getElementById('mis-dashboard').classList.remove('hidden');
     }
 
     function submitTimesheet() {
@@ -214,6 +338,9 @@ function handleRegister() {
         alert("Please fill all fields.");
         return;
       }
+
+      const submitBtn = document.querySelector('button[onclick="submitTimesheet()"]');
+      setLoading(submitBtn, true, "Saving...");
 
       fetch(scriptURL, {
         method: 'POST',
@@ -229,40 +356,48 @@ function handleRegister() {
       .then(res => res.json())
       .then(data => {
         if (data.status === 'success') {
-          alert('Timesheet saved.');
+          alert('Timesheet saved successfully.');
           document.getElementById('ts-date').value = '';
-          document.getElementById('ts-client').value = 'Select Client';
+          document.getElementById('ts-client').value = '';
           document.getElementById('ts-hours').value = '';
         } else {
           alert('Error saving timesheet.');
         }
       })
-      .catch(err => alert('Error submitting timesheet.'));
+      .catch(err => {
+        console.error(err);
+        alert('Error submitting timesheet.');
+      })
+      .finally(() => {
+        setLoading(submitBtn, false, "Save");
+      });
     }
 
-function loadClients(inputId) {
-  fetch(scriptURL + '?action=getClients')
-    .then(response => response.json())
-    .then(data => {
-      if (!data.clients || data.clients.length === 0) return;
+    function loadClients(inputId) {
+      fetch(scriptURL + '?action=getClients')
+        .then(response => response.json())
+        .then(data => {
+          if (!data.clients || data.clients.length === 0) return;
 
-      const datalistId = inputId === 'client-name' ? 'client-list' : 'ts-client-list';
-      const datalist = document.getElementById(datalistId);
-      datalist.innerHTML = ''; // clear old
+          let datalistId = '';
+          if (inputId === 'client-name') datalistId = 'client-list';
+          else if (inputId === 'ts-client') datalistId = 'ts-client-list';
+          else if (inputId === 'exp-client') datalistId = 'exp-client-list';
 
-      data.clients.forEach(client => {
-        const option = document.createElement('option');
-        option.value = client;
-        datalist.appendChild(option);
-      });
-    })
-    .catch(err => console.error('Error loading clients:', err));
-}
+          const datalist = document.getElementById(datalistId);
+          if (datalist) {
+            datalist.innerHTML = '';
+            data.clients.forEach(client => {
+              const option = document.createElement('option');
+              option.value = client;
+              datalist.appendChild(option);
+            });
+          }
+        })
+        .catch(err => console.error('Error loading clients:', err));
+    }
 
-    function showMISDashboard() {
-      document.getElementById('main-menu').classList.add('hidden');
-      document.getElementById('mis-dashboard').classList.remove('hidden');
-
+    function loadMISDashboard() {
       fetch(scriptURL + '?action=misDashboard')
         .then(res => res.json())
         .then(data => {
@@ -270,121 +405,329 @@ function loadClients(inputId) {
           document.getElementById('mis-clients').innerHTML = `<h4>Active Clients with Total Hours:</h4><table><tr><th>Client</th><th>Total Hours (Month)</th></tr>${data.clients.map((client, idx) => `<tr><td>${client}</td><td>${data.clientHours[idx]}</td></tr>`).join('')}</table>`;
           document.getElementById('mis-employees').innerHTML = `<h4>Present Employees:</h4><table><tr><th>Employee</th><th>Client</th></tr>${data.presentEmployeeClients.map(row => `<tr><td>${row.name}</td><td>${row.client}</td></tr>`).join('')}</table>`;
         })
-        .catch(err => alert('Error loading MIS Dashboard.'));
+        .catch(err => {
+          console.error(err);
+          alert('Error loading MIS Dashboard.');
+        });
     }
 
-function markAttendance(status) {
-  const client = document.getElementById('client-name').value;
-  if (!client || client === "Select Client") {
-    alert("Please select a client.");
-    return;
-  }
+    function loadTeamAllocation() {
+      const startDate = document.getElementById('team-start').value;
+      const endDate = document.getElementById('team-end').value;
 
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        const location = `(${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+      if (!startDate || !endDate) {
+        alert('Please select both start and end dates.');
+        return;
+      }
 
-        fetch(scriptURL, {
-          method: 'POST',
-          body: new URLSearchParams({
-            action: 'markAttendance',
-            name: currentUser.name,
-            code: currentUser.code,
-            status,
-            client,
-            location,
-            lat,
-            lon
-          })
-        })
+      const loadBtn = document.querySelector('button[onclick="loadTeamAllocation()"]');
+      setLoading(loadBtn, true, "Loading...");
+
+      fetch(scriptURL + `?action=teamAllocation&from=${startDate}&to=${endDate}`)
         .then(res => res.json())
         .then(data => {
           if (data.status === 'success') {
-            alert(`✅ Attendance marked ${status} at ${data.time}`);
-            backToMenu();
-          } else if (data.status === 'already_marked') {
-            alert(`⚠️ You have already marked attendance today at ${data.time}.`);
+            displayTeamAllocation(data.rows);
           } else {
-            alert(data.message || '❌ Attendance marking failed.');
+            alert(data.message || 'Error loading team allocation.');
           }
         })
         .catch(err => {
-          alert("⚠️ Error while marking attendance.");
           console.error(err);
+          alert('Error loading team allocation.');
+        })
+        .finally(() => {
+          setLoading(loadBtn, false, "Load Team Data");
         });
-      },
-      () => {
-        alert("📍 Location permission denied or unavailable.");
-      }
-    );
-  } else {
-    alert("📍 Geolocation not supported.");
-  }
-}
-
-function populateClientDropdown(selectId, clients) {
-  const dropdown = document.getElementById(selectId);
-  dropdown.innerHTML = '<option value="">-- Select Client --</option>';
-  clients.forEach(client => {
-    const opt = document.createElement('option');
-    opt.value = client;
-    opt.textContent = client;
-    dropdown.appendChild(opt);
-  });
-}
-
-function filterClients(inputId, selectId) {
-  const searchValue = document.getElementById(inputId).value.toLowerCase();
-  const filtered = allClients.filter(client => client.toLowerCase().includes(searchValue));
-  populateClientDropdown(selectId, filtered);
-}
-
-function showChangePassword() {
-  document.getElementById('main-menu').classList.add('hidden');
-  document.getElementById('change-password-section').classList.remove('hidden');
-  document.getElementById('cp-code').value = currentUser.code;
-}
-
-function submitPasswordChange() {
-  const code = document.getElementById('cp-code').value.trim();
-  const oldPass = document.getElementById('cp-old').value.trim();
-  const newPass = document.getElementById('cp-new').value.trim();
-
-  if (!oldPass || !newPass) {
-    alert("Please fill both old and new passwords.");
-    return;
-  }
-
-  fetch(scriptURL, {
-    method: 'POST',
-    body: new URLSearchParams({
-      action: 'changePassword',
-      code,
-      oldPass,
-      newPass
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
-if (data.status === 'success') {
-  alert("Password changed successfully.");
-  document.getElementById('change-password-section').classList.add('hidden');
-  document.getElementById('main-menu').classList.remove('hidden');
-  // Optionally, clear fields
-  document.getElementById('cp-old').value = '';
-  document.getElementById('cp-new').value = '';
-} else {
-      alert(data.message || "Failed to change password.");
     }
-  })
-  .catch(err => {
-    alert("Error changing password.");
-    console.error(err);
-  });
-}
+
+    function displayTeamAllocation(rows) {
+      const tableContainer = document.getElementById('team-allocation-table');
+      if (!rows || rows.length === 0) {
+        tableContainer.innerHTML = '<p>No team allocation data found.</p>';
+        return;
+      }
+
+      let html = '<table><thead><tr>';
+      rows[0].forEach(header => {
+        html += `<th>${header}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+
+      for (let i = 1; i < rows.length; i++) {
+        html += '<tr>';
+        rows[i].forEach(cell => {
+          html += `<td>${cell || ''}</td>`;
+        });
+        html += '</tr>';
+      }
+
+      html += '</tbody></table>';
+      tableContainer.innerHTML = html;
+    }
+
+    function markAttendance(status) {
+      const client = document.getElementById('client-name').value;
+      if (!client) {
+        alert("Please select a client.");
+        return;
+      }
+
+      const button = document.querySelector(`button[onclick="markAttendance('${status}')"]`);
+      setLoading(button, true, `Marking ${status}...`);
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const location = `(${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+
+            fetch(scriptURL, {
+              method: 'POST',
+              body: new URLSearchParams({
+                action: 'markAttendance',
+                name: currentUser.name,
+                code: currentUser.code,
+                status,
+                client,
+                location,
+                lat,
+                lon
+              })
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === 'success') {
+                alert(`✅ Attendance marked ${status} at ${data.time}`);
+                backToMenu();
+              } else if (data.status === 'already_marked') {
+                alert(`⚠️ You have already marked attendance today at ${data.time}.`);
+              } else {
+                alert(data.message || '❌ Attendance marking failed.');
+              }
+            })
+            .catch(err => {
+              alert("⚠️ Error while marking attendance.");
+              console.error(err);
+            })
+            .finally(() => {
+              setLoading(button, false, `Mark ${status}`);
+            });
+          },
+          () => {
+            alert("📍 Location permission denied or unavailable.");
+            setLoading(button, false, `Mark ${status}`);
+          }
+        );
+      } else {
+        alert("📍 Geolocation not supported.");
+        setLoading(button, false, `Mark ${status}`);
+      }
+    }
+
+    function submitPasswordChange() {
+      const code = document.getElementById('cp-code').value.trim();
+      const oldPass = document.getElementById('cp-old').value.trim();
+      const newPass = document.getElementById('cp-new').value.trim();
+
+      if (!oldPass || !newPass) {
+        alert("Please fill both old and new passwords.");
+        return;
+      }
+
+      const changeBtn = document.querySelector('button[onclick="submitPasswordChange()"]');
+      setLoading(changeBtn, true, "Changing...");
+
+      fetch(scriptURL, {
+        method: 'POST',
+        body: new URLSearchParams({
+          action: 'changePassword',
+          code,
+          oldPass,
+          newPass
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          alert("Password changed successfully.");
+          document.getElementById('cp-old').value = '';
+          document.getElementById('cp-new').value = '';
+          backToMenu();
+        } else {
+          alert(data.message || "Failed to change password.");
+        }
+      })
+      .catch(err => {
+        alert("Error changing password.");
+        console.error(err);
+      })
+      .finally(() => {
+        setLoading(changeBtn, false, "Change Password");
+      });
+    }
+
+    function submitExpense() {
+      const name = document.getElementById('exp-name').value.trim();
+      const code = document.getElementById('exp-code').value.trim();
+      const date = document.getElementById('exp-date').value;
+      const client = document.getElementById('exp-client').value.trim();
+      const type = document.getElementById('exp-type').value;
+      const amount = document.getElementById('exp-amount').value;
+      const remarks = document.getElementById('exp-remarks').value.trim();
+
+      if (!date || !client || !type || !amount) {
+        alert("⚠️ Please fill all required fields.");
+        return;
+      }
+
+      const button = document.querySelector('button[onclick="submitExpense()"]');
+      setLoading(button, true, "Submitting...");
+
+      fetch(scriptURL, {
+        method: 'POST',
+        body: new URLSearchParams({
+          action: 'submitExpense',
+          name,
+          code,
+          date,
+          client,
+          type,
+          amount,
+          remarks
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success') {
+            alert("✅ Expense submitted successfully.");
+            document.getElementById('exp-date').value = '';
+            document.getElementById('exp-client').value = '';
+            document.getElementById('exp-type').value = '';
+            document.getElementById('exp-amount').value = '';
+            document.getElementById('exp-remarks').value = '';
+            backToMenu();
+          } else {
+            alert(data.message || "❌ Submission failed.");
+          }
+        })
+        .catch(err => {
+          alert("❌ Error while submitting expense.");
+          console.error(err);
+        })
+        .finally(() => setLoading(button, false, "Submit Expense"));
+    }
+
+    function downloadAttendance() {
+      const start = document.getElementById('att-start').value;
+      const end = document.getElementById('att-end').value;
+
+      if (!start || !end) {
+        alert("Please select both start and end dates.");
+        return;
+      }
+
+      const downloadBtn = document.querySelector('button[onclick="downloadAttendance()"]');
+      setLoading(downloadBtn, true, "Downloading...");
+
+      fetch(`${scriptURL}?action=downloadAttendance&code=${currentUser.code}&start=${start}&end=${end}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success' && data.fileUrl) {
+            const a = document.createElement('a');
+            a.href = data.fileUrl;
+            a.download = `Attendance_${currentUser.code}_${start}_to_${end}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            alert("✅ Attendance downloaded.");
+            backToMenu();
+          } else {
+            alert(data.message || "❌ Unable to download attendance.");
+          }
+        })
+        .catch(err => {
+          alert("❌ Error while downloading attendance.");
+          console.error(err);
+        })
+        .finally(() => {
+          setLoading(downloadBtn, false, "Download");
+        });
+    }
+
+    function downloadTimesheet() {
+      const start = document.getElementById('ts-start').value;
+      const end = document.getElementById('ts-end').value;
+      const downloadBtn = document.querySelector('button[onclick="downloadTimesheet()"]');
+
+      if (!start || !end) {
+        alert("Please select both start and end dates.");
+        return;
+      }
+
+      setLoading(downloadBtn, true, "Downloading...");
+
+      fetch(`${scriptURL}?action=downloadTimesheet&code=${currentUser.code}&start=${start}&end=${end}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success' && data.fileUrl) {
+            const a = document.createElement('a');
+            a.href = data.fileUrl;
+            a.download = `Timesheet_${currentUser.code}_${start}_to_${end}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            alert("✅ Timesheet downloaded.");
+            backToMenu();
+          } else {
+            alert(data.message || "❌ Unable to download timesheet.");
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert("❌ Error downloading timesheet.");
+        })
+        .finally(() => setLoading(downloadBtn, false, "Download"));
+    }
+
+    function downloadExpense() {
+      const start = document.getElementById('exp-start').value;
+      const end = document.getElementById('exp-end').value;
+      const downloadBtn = document.querySelector('button[onclick="downloadExpense()"]');
+
+      if (!start || !end) {
+        alert("Please select both start and end dates.");
+        return;
+      }
+
+      setLoading(downloadBtn, true, "Downloading...");
+
+      fetch(`${scriptURL}?action=downloadExpense&code=${currentUser.code}&start=${start}&end=${end}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'success' && data.fileUrl) {
+            const a = document.createElement('a');
+            a.href = data.fileUrl;
+            a.download = `Expense_${currentUser.code}_${start}_to_${end}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            alert("✅ Expense report downloaded.");
+            backToMenu();
+          } else {
+            alert(data.message || "❌ Unable to download expense data.");
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert("❌ Error downloading expense.");
+        })
+        .finally(() => setLoading(downloadBtn, false, "Download"));
+    }
   </script>
 </body>
 </html>
