@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Attendance Register</title>
+  <title>Attendance App</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#007bff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -238,15 +238,16 @@
     }
 
     function hideAllSections() {
-      const sections = [
-        'main-menu', 'attendance-section', 'timesheet-section', 'mis-dashboard', 
-        'attendance-download-section', 'timesheet-download-section', 'expense-download-section',
-        'change-password-section', 'expense-section', 'team-allocation-section'
-      ];
-      sections.forEach(section => {
-        document.getElementById(section).classList.add('hidden');
-      });
-    }
+  const sections = [
+    'main-menu', 'attendance-section', 'timesheet-section', 'mis-dashboard', 
+    'attendance-download-section', 'timesheet-download-section', 'expense-download-section',
+    'change-password-section', 'expense-section', 'team-allocation-section',
+    'hours-booked-section', 'employee-attendance-section'
+  ];
+  sections.forEach(section => {
+    document.getElementById(section).classList.add('hidden');
+  });
+}
 
     function handleLogin() {
       const name = document.getElementById('login-name').value.trim();
@@ -352,9 +353,27 @@
     }
 
     function backToMIS() {
-      hideAllSections();
-      document.getElementById('mis-dashboard').classList.remove('hidden');
-    }
+  hideAllSections();
+  
+  // Clear attendance results when going back to MIS
+  document.getElementById('present-employees').innerHTML = '';
+  document.getElementById('absent-employees').innerHTML = '';
+  document.getElementById('attendance-check-date').value = '';
+  
+  // Clear the entire attendance summary
+  document.getElementById('attendance-summary').innerHTML = '';
+  
+  // Clear hours booked data
+  document.getElementById('mis-leads').innerHTML = '';
+  document.getElementById('mis-clients').innerHTML = '';
+  document.getElementById('mis-employees').innerHTML = '';
+  
+  // Clear team allocation data
+  document.getElementById('team-allocation-table').innerHTML = '';
+  
+  // Show MIS dashboard
+  document.getElementById('mis-dashboard').classList.remove('hidden');
+}
 
     function submitTimesheet() {
       const date = document.getElementById('ts-date').value;
@@ -795,7 +814,7 @@ function displayEmployeeAttendance(data) {
   
   // Display Present Employees
   if (data.presentEmployees && data.presentEmployees.length > 0) {
-    let presentHtml = '<h4 style="color: green;">Present Employees:</h4>';
+    let presentHtml = '<h4 style="color: green;">Present Employees(Audit):</h4>';
     presentHtml += '<table><tr><th>Employee Name</th><th>Client</th><th>Time In</th></tr>';
     
     data.presentEmployees.forEach(emp => {
@@ -809,12 +828,12 @@ function displayEmployeeAttendance(data) {
     presentHtml += '</table>';
     presentDiv.innerHTML = presentHtml;
   } else {
-    presentDiv.innerHTML = '<h4 style="color: green;">Present Employees:</h4><p>No employees marked present.</p>';
+    presentDiv.innerHTML = '<h4 style="color: green;">Present Employees(Audit):</h4><p>No employees marked present.</p>';
   }
   
   // Display Absent Employees
   if (data.absentEmployees && data.absentEmployees.length > 0) {
-    let absentHtml = '<h4 style="color: red;">Absent Employees:</h4>';
+    let absentHtml = '<h4 style="color: red;">Absent Employees(Audit):</h4>';
     absentHtml += '<table><tr><th>Employee Name</th></tr>';
     
     data.absentEmployees.forEach(emp => {
@@ -826,7 +845,7 @@ function displayEmployeeAttendance(data) {
     absentHtml += '</table>';
     absentDiv.innerHTML = absentHtml;
   } else {
-    absentDiv.innerHTML = '<h4 style="color: red;">Absent Employees:</h4><p>All active employees are present.</p>';
+    absentDiv.innerHTML = '<h4 style="color: red;">Absent Employees(Audit):</h4><p>All active employees are present.</p>';
   }
 }
 
@@ -843,7 +862,7 @@ function loadEmployeeAttendance() {
   const loadBtn = document.querySelector('button[onclick="loadEmployeeAttendance()"]');
   setLoading(loadBtn, true, "Loading...");
 
-  fetch(scriptURL + `?action=checkEmployeeAttendance&date=${selectedDate}`)
+  fetch(scriptURL + `?action=checkEmployeeAttendance&date=${selectedDate}&team=Audit`)
     .then(res => res.json())
     .then(data => {
       console.log('Backend response:', data); // Debug log
