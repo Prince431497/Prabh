@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Attendance App</title>
+  <title>Attendance Register</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#007bff">
 <meta name="mobile-web-app-capable" content="yes">
@@ -57,6 +57,7 @@
         <button onclick="showChangePassword()">Change Password</button>
         <button onclick="showTimesheetDownload()">Check Timesheet</button>
         <button onclick="showExpenseDownload()">Check Expense</button>
+<button onclick="showCreateInvoice()" id="create-invoice-btn" style="display:none;">Create Invoice</button>
       </div>
     </div>
 
@@ -134,18 +135,44 @@
     <button onclick="showTeamAllocation()" class="btn btn-outline-info btn-lg">
       <i class="fas fa-users"></i> Team Allocation
     </button>
+<button onclick="showClientListCheck()" class="btn btn-outline-info btn-lg">
+  <i class="fas fa-building"></i> Check Client List
+</button>
   </div>
   <button onclick="backToMenu()" style="margin-top:20px; background:#6c757d;">Back</button>
 </div>
 
-<!-- Hours Booked Section -->
 <div id="hours-booked-section" class="hidden">
   <h3>Hours Booked Report</h3>
-  <div id="hours-booked-content">
-    <div id="mis-leads"></div>
-    <div id="mis-clients"></div>
-    <div id="mis-employees"></div>
+  
+  <!-- Report Type Selection -->
+  <label>Report Type</label>
+  <select id="hours-report-type" onchange="showHoursReportOptions()" required>
+    <option value="">-- Select Report Type --</option>
+    <option value="employee-wise">Employee Wise Hours</option>
+    <option value="client-wise">Client Wise Hours</option>
+  </select>
+  
+  <!-- Employee-wise options -->
+  <div id="employee-wise-options" class="hidden">
+    <label>Select Employee</label>
+    <select id="employee-select" required>
+      <option value="">-- Select Employee --</option>
+    </select>
   </div>
+  
+  <!-- Date range (common for both) -->
+  <div id="date-range-options" class="hidden">
+    <label>From Date</label>
+    <input type="date" id="hours-from-date" required>
+    <label>To Date</label>
+    <input type="date" id="hours-to-date" required>
+    <button onclick="generateHoursReport()">Generate Report</button>
+  </div>
+  
+  <!-- Results container -->
+  <div id="hours-report-results" style="margin-top: 20px;"></div>
+  
   <button onclick="backToMIS()" style="background:#6c757d;margin-top:10px;">Back to MIS</button>
 </div>
 
@@ -175,6 +202,20 @@
       <div id="team-allocation-table" class="team-allocation-table"></div>
       <button onclick="backToMIS()" style="background:#6c757d;margin-top:10px;">Back to MIS</button>
     </div>
+
+<div id="client-list-section" class="hidden">
+  <h3>Client List Check</h3>
+  <label>Select Date</label>
+  <input type="date" id="client-check-date" value="">
+  <button onclick="loadClientList()">Check Clients</button>
+  
+  <div id="client-summary" style="margin-top: 20px;">
+    <div id="clients-with-attendance"></div>
+    <div id="clients-without-attendance"></div>
+  </div>
+  
+  <button onclick="backToMIS()" style="background:#6c757d;margin-top:10px;">Back to MIS</button>
+</div>
 
     <div id="change-password-section" class="hidden">
       <h3>Change Password</h3>
@@ -216,6 +257,32 @@
       <button onclick="submitExpense()">Submit Expense</button>
       <button onclick="backToMenu()" style="background:#6c757d;margin-top:10px;">Back</button>
     </div>
+<!-- Create Invoice Section -->
+<div id="create-invoice-section" class="hidden">
+  <h3>Create Invoice</h3>
+  <label>Client Name</label>
+  <input list="invoice-client-list" id="invoice-client" placeholder="Search and select client" required>
+  <datalist id="invoice-client-list"></datalist>
+  
+  <label>Nature of Service</label>
+  <select id="nature-of-service" onchange="showServiceForm()" required>
+    <option value="">-- Select Service Type --</option>
+    <option value="Internal Audit">Internal Audit</option>
+    <option value="FAR">FAR</option>
+    <option value="Stock Audit">Stock Audit</option>
+    <option value="Certificate">Certificate</option>
+    <option value="Special Assignment">Special Assignment</option>
+    <option value="Statutory Audit">Statutory Audit</option>
+    <option value="Accounting">Accounting</option>
+    <option value="Retainership">Retainership</option>
+  </select>
+
+  <!-- Service-specific forms will appear here -->
+  <div id="service-forms"></div>
+  
+  <button onclick="backToMenu()" style="background:#6c757d;margin-top:10px;">Back</button>
+</div>
+
   </div>
 
   <script>
@@ -242,7 +309,7 @@
     'main-menu', 'attendance-section', 'timesheet-section', 'mis-dashboard', 
     'attendance-download-section', 'timesheet-download-section', 'expense-download-section',
     'change-password-section', 'expense-section', 'team-allocation-section',
-    'hours-booked-section', 'employee-attendance-section'
+    'hours-booked-section', 'employee-attendance-section' , 'create-invoice-section' , 'client-list-section'
   ];
   sections.forEach(section => {
     document.getElementById(section).classList.add('hidden');
@@ -275,9 +342,13 @@
 
             // Hide MIS Dashboard button if not Admin
             const misDashboardBtn = document.querySelector("button[onclick='showMISDashboard()']");
+const createInvoiceBtn = document.getElementById('create-invoice-btn'); // ADD THIS
             if (role !== 'Admin' && misDashboardBtn) {
               misDashboardBtn.style.display = "none";
             }
+if (role === 'Admin' && createInvoiceBtn) {
+  createInvoiceBtn.style.display = "block";
+}
 
           } else {
             alert('Invalid credentials.');
@@ -356,24 +427,46 @@
   hideAllSections();
   
   // Clear attendance results when going back to MIS
-  document.getElementById('present-employees').innerHTML = '';
-  document.getElementById('absent-employees').innerHTML = '';
-  document.getElementById('attendance-check-date').value = '';
+  const presentEmployees = document.getElementById('present-employees');
+  const absentEmployees = document.getElementById('absent-employees');
+  const attendanceCheckDate = document.getElementById('attendance-check-date');
+  const attendanceSummary = document.getElementById('attendance-summary');
   
-  // Clear the entire attendance summary
-  document.getElementById('attendance-summary').innerHTML = '';
+  if (presentEmployees) presentEmployees.innerHTML = '';
+  if (absentEmployees) absentEmployees.innerHTML = '';
+  if (attendanceCheckDate) attendanceCheckDate.value = '';
+  if (attendanceSummary) attendanceSummary.innerHTML = '';
   
   // Clear hours booked data
-  document.getElementById('mis-leads').innerHTML = '';
-  document.getElementById('mis-clients').innerHTML = '';
-  document.getElementById('mis-employees').innerHTML = '';
+  const hoursReportType = document.getElementById('hours-report-type');
+  const hoursFromDate = document.getElementById('hours-from-date');
+  const hoursToDate = document.getElementById('hours-to-date');
+  const hoursReportResults = document.getElementById('hours-report-results');
+  const dateRangeOptions = document.getElementById('date-range-options');
+  
+  if (hoursReportType) hoursReportType.value = '';
+  if (hoursFromDate) hoursFromDate.value = '';
+  if (hoursToDate) hoursToDate.value = '';
+  if (hoursReportResults) hoursReportResults.innerHTML = '';
+  if (dateRangeOptions) dateRangeOptions.classList.add('hidden');
   
   // Clear team allocation data
-  document.getElementById('team-allocation-table').innerHTML = '';
+  const teamAllocationTable = document.getElementById('team-allocation-table');
+  if (teamAllocationTable) teamAllocationTable.innerHTML = '';
+  
+  // Clear client list data
+  const clientsWithAttendance = document.getElementById('clients-with-attendance');
+  const clientsWithoutAttendance = document.getElementById('clients-without-attendance');
+  const clientCheckDate = document.getElementById('client-check-date');
+  
+  if (clientsWithAttendance) clientsWithAttendance.innerHTML = '';
+  if (clientsWithoutAttendance) clientsWithoutAttendance.innerHTML = '';
+  if (clientCheckDate) clientCheckDate.value = '';
   
   // Show MIS dashboard
   document.getElementById('mis-dashboard').classList.remove('hidden');
 }
+
 
     function submitTimesheet() {
       const date = document.getElementById('ts-date').value;
@@ -429,6 +522,7 @@
           if (inputId === 'client-name') datalistId = 'client-list';
           else if (inputId === 'ts-client') datalistId = 'ts-client-list';
           else if (inputId === 'exp-client') datalistId = 'exp-client-list';
+else if (inputId === 'invoice-client') datalistId = 'invoice-client-list'; // ADD THIS LINE
 
           const datalist = document.getElementById(datalistId);
           if (datalist) {
@@ -748,7 +842,7 @@ function showMISDashboard() {
 function showHoursBooked() {
   hideAllSections();
   document.getElementById('hours-booked-section').classList.remove('hidden');
-  loadHoursBookedData();
+  loadAuditEmployees(); // Load audit team employees for dropdown
 }
 
 function showEmployeeAttendance() {
@@ -801,7 +895,6 @@ function loadEmployeeAttendance() {
     });
 }
 
-// Replace your displayEmployeeAttendance function in HTML with this:
 
 // Replace your displayEmployeeAttendance function with this corrected version:
 
@@ -883,6 +976,678 @@ function loadEmployeeAttendance() {
       setLoading(loadBtn, false, "Check Attendance");
     });
 }
+
+function showCreateInvoice() {
+  hideAllSections();
+  document.getElementById('create-invoice-section').classList.remove('hidden');
+  loadClients('invoice-client');
+  // Set today's date as default
+  document.getElementById('invoice-date').value = new Date().toISOString().split('T')[0];
+}
+
+function generateInvoice() {
+  const client = document.getElementById('invoice-client').value;
+  const invoiceDate = document.getElementById('invoice-date').value;
+  const fromDate = document.getElementById('invoice-from').value;
+  const toDate = document.getElementById('invoice-to').value;
+  const rate = document.getElementById('invoice-rate').value;
+
+  if (!client || !invoiceDate || !fromDate || !toDate || !rate) {
+    alert("Please fill all fields.");
+    return;
+  }
+
+  const generateBtn = document.querySelector('button[onclick="generateInvoice()"]');
+  setLoading(generateBtn, true, "Generating...");
+
+  fetch(scriptURL, {
+    method: 'POST',
+    body: new URLSearchParams({
+      action: 'createInvoice',
+      client,
+      invoiceDate,
+      fromDate,
+      toDate,
+      rate,
+      adminCode: currentUser.code
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      alert("✅ Invoice generated successfully.");
+      // Clear form
+      document.getElementById('invoice-client').value = '';
+      document.getElementById('invoice-from').value = '';
+      document.getElementById('invoice-to').value = '';
+      document.getElementById('invoice-rate').value = '';
+    } else {
+      alert(data.message || "❌ Invoice generation failed.");
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Error generating invoice.");
+  })
+  .finally(() => setLoading(generateBtn, false, "Generate Invoice"));
+}
+
+// Replace the entire showServiceForm() function with this:
+
+function showServiceForm() {
+  const serviceType = document.getElementById('nature-of-service').value;
+  const formsContainer = document.getElementById('service-forms');
+  
+  if (!serviceType) {
+    formsContainer.innerHTML = '';
+    return;
+  }
+
+  let formHTML = '';
+
+  switch(serviceType) {
+    case 'Internal Audit':
+      formHTML = `
+        <h4>Internal Audit Details</h4>
+        <label>Description of Services</label>
+        <textarea id="audit-description" rows="3" placeholder="Describe the internal audit services" required></textarea>
+        <label>Audit Period From</label>
+        <input type="date" id="audit-from" required>
+        <label>Audit Period To</label>
+        <input type="date" id="audit-to" required>
+        <label>Taxable Amount</label>
+        <input type="number" id="audit-taxable" min="0" required>
+        <label>Out of Pocket Expense Period</label>
+        <input type="text" id="audit-expense-period" required>
+        <label>Remarks, If Any</label>
+        <textarea id="audit-remarks" rows="2" placeholder="Enter remarks if any"></textarea>
+        <button onclick="generateServiceInvoice('Internal Audit')">Generate Internal Audit Invoice</button>
+      `;
+      break;
+
+    case 'FAR':
+      formHTML = `
+        <h4>FAR (Fixed Asset Register) Details</h4>
+        <label>Description of Services</label>
+        <textarea id="far-description" rows="3" placeholder="Describe the FAR services" required></textarea>
+        <label>Service Date</label>
+        <input type="date" id="far-date" required>
+        <label>Taxable Amount</label>
+        <input type="number" id="far-taxable" min="0" required>
+        <label>Out of Pocket Expense If any</label>
+        <input type="number" id="far-expense" min="0" value="0">
+        <label>Remarks, If Any</label>
+        <textarea id="far-remarks" rows="2" placeholder="Enter remarks if any"></textarea>
+        <button onclick="generateServiceInvoice('FAR')">Generate FAR Invoice</button>
+      `;
+      break;
+
+    case 'Stock Audit':
+      formHTML = `
+        <h4>Stock Audit Details</h4>
+        <label>Description of Services</label>
+        <textarea id="stock-description" rows="3" placeholder="Describe the stock audit services" required></textarea>
+        <label>From Date</label>
+        <input type="date" id="stock-from" required onchange="calculateManDays()">
+        <label>To Date</label>
+        <input type="date" id="stock-to" required onchange="calculateManDays()">
+        <label>Location Name</label>
+        <input type="text" id="stock-location" required>
+        <label>Number of Person</label>
+        <input type="number" id="stock-persons" min="1" required onchange="calculateManDays()">
+        <label>Total Man days</label>
+        <input type="number" id="stock-mandays" readonly>
+        <label>Rate Per Man days</label>
+        <input type="number" id="stock-rate-mandays" min="0" required onchange="calculateTaxableAmount()">
+        <label>Taxable Amount</label>
+        <input type="number" id="stock-taxable" readonly>
+        <button onclick="generateServiceInvoice('Stock Audit')">Generate Stock Audit Invoice</button>
+      `;
+      break;
+
+    case 'Certificate':
+      formHTML = `
+        <h4>Certificate Details</h4>
+        <label>Description of Services</label>
+        <textarea id="cert-description" rows="3" placeholder="Describe the certificate services" required></textarea>
+        <label>Certificate Date</label>
+        <input type="date" id="cert-date" required>
+        <label>Certificate Type</label>
+        <select id="cert-type" required>
+          <option value="">-- Select Type --</option>
+          <option value="Net Worth">Net Worth Certificate</option>
+          <option value="Turnover">Turnover Certificate</option>
+          <option value="Balance Confirmation">Balance Confirmation</option>
+          <option value="Other">Other</option>
+        </select>
+        <label>UDIN</label>
+        <input type="text" id="cert-udin" placeholder="Enter UDIN" required>
+        <label>Taxable Amount</label>
+        <input type="number" id="cert-taxable" min="0" required>
+        <button onclick="generateServiceInvoice('Certificate')">Generate Certificate Invoice</button>
+      `;
+      break;
+
+    case 'Special Assignment':
+      formHTML = `
+        <h4>Special Assignment Details</h4>
+        <label>Description of Services</label>
+        <textarea id="assignment-description" rows="3" placeholder="Describe the special assignment services" required></textarea>
+        <label>Assignment Description</label>
+        <textarea id="assignment-desc" rows="3" placeholder="Describe the assignment" required></textarea>
+        <label>Start Date</label>
+        <input type="date" id="assignment-start" required>
+        <label>End Date</label>
+        <input type="date" id="assignment-end" required>
+        <label>Billing Type</label>
+        <select id="assignment-billing" required>
+          <option value="">-- Select Billing --</option>
+          <option value="hourly">Hourly Rate</option>
+          <option value="daily">Daily Rate</option>
+          <option value="fixed">Fixed Amount</option>
+        </select>
+        <label>Rate/Amount (₹)</label>
+        <input type="number" id="assignment-rate" min="0" required>
+        <label>Quantity (Hours/Days)</label>
+        <input type="number" id="assignment-quantity" min="0">
+        <button onclick="generateServiceInvoice('Special Assignment')">Generate Assignment Invoice</button>
+      `;
+      break;
+
+    case 'Statutory Audit':
+      formHTML = `
+        <h4>Statutory Audit Details</h4>
+        <label>Description of Services</label>
+        <textarea id="statutory-description" rows="3" placeholder="Describe the statutory audit services" required></textarea>
+        <label>Financial Year</label>
+        <input type="text" id="statutory-fy" placeholder="e.g., 2023-24" required>
+        <label>Audit Type</label>
+        <select id="statutory-type" required>
+          <option value="">-- Select Type --</option>
+          <option value="Company">Company Audit</option>
+          <option value="Partnership">Partnership Firm</option>
+          <option value="LLP">LLP Audit</option>
+          <option value="Trust">Trust/Society</option>
+        </select>
+        <label>Annual Turnover (₹)</label>
+        <input type="number" id="statutory-turnover" min="0" required>
+        <label>Audit Fees (₹)</label>
+        <input type="number" id="statutory-fees" min="0" required>
+        <button onclick="generateServiceInvoice('Statutory Audit')">Generate Statutory Audit Invoice</button>
+      `;
+      break;
+
+    case 'Accounting':
+      formHTML = `
+        <h4>Accounting Services Details</h4>
+        <label>Description of Services</label>
+        <textarea id="accounting-description" rows="3" placeholder="Describe the accounting services" required></textarea>
+        <label>Service Period From</label>
+        <input type="date" id="accounting-from" required>
+        <label>Service Period To</label>
+        <input type="date" id="accounting-to" required>
+        <label>Service Type</label>
+        <select id="accounting-type" required>
+          <option value="">-- Select Type --</option>
+          <option value="Bookkeeping">Bookkeeping</option>
+          <option value="GST Returns">GST Returns</option>
+          <option value="TDS Returns">TDS Returns</option>
+          <option value="Financial Statements">Financial Statements</option>
+          <option value="Complete Accounting">Complete Accounting</option>
+        </select>
+        <label>Monthly Charges (₹)</label>
+        <input type="number" id="accounting-monthly" min="0" required>
+        <label>Number of Months</label>
+        <input type="number" id="accounting-months" min="1" required>
+        <button onclick="generateServiceInvoice('Accounting')">Generate Accounting Invoice</button>
+      `;
+      break;
+
+    case 'Retainership':
+      formHTML = `
+        <h4>Retainership Details</h4>
+        <label>Description of Services</label>
+        <textarea id="retainer-description" rows="3" placeholder="Describe the retainership services" required></textarea>
+        <label>Retainer Period From</label>
+        <input type="date" id="retainer-from" required>
+        <label>Retainer Period To</label>
+        <input type="date" id="retainer-to" required>
+        <label>Services Covered</label>
+        <textarea id="retainer-services" rows="3" placeholder="List services covered under retainership" required></textarea>
+        <label>Monthly Retainer (₹)</label>
+        <input type="number" id="retainer-monthly" min="0" required>
+        <label>Number of Months</label>
+        <input type="number" id="retainer-months" min="1" required>
+        <button onclick="generateServiceInvoice('Retainership')">Generate Retainership Invoice</button>
+      `;
+      break;
+  }
+
+  formsContainer.innerHTML = formHTML;
+}
+
+// Add these new functions for Stock Audit calculations:
+
+function calculateManDays() {
+  const fromDate = document.getElementById('stock-from').value;
+  const toDate = document.getElementById('stock-to').value;
+  const persons = document.getElementById('stock-persons').value;
+  
+  if (fromDate && toDate && persons) {
+    const startDate = new Date(fromDate);
+    const endDate = new Date(toDate);
+    const timeDiff = endDate.getTime() - startDate.getTime();
+    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1; // +1 to include both start and end date
+    
+    const totalManDays = daysDiff * parseInt(persons);
+    document.getElementById('stock-mandays').value = totalManDays;
+    
+    // Also calculate taxable amount if rate is available
+    calculateTaxableAmount();
+  }
+}
+
+function calculateTaxableAmount() {
+  const manDays = document.getElementById('stock-mandays').value;
+  const ratePerManDay = document.getElementById('stock-rate-mandays').value;
+  
+  if (manDays && ratePerManDay) {
+    const taxableAmount = parseFloat(manDays) * parseFloat(ratePerManDay);
+    document.getElementById('stock-taxable').value = taxableAmount;
+  }
+}
+
+// Replace the entire collectServiceData() function with this:
+
+function collectServiceData(serviceType) {
+  let data = {};
+  
+  try {
+    switch(serviceType) {
+      case 'Internal Audit':
+        data = {
+          description: document.getElementById('audit-description').value,
+          auditFrom: document.getElementById('audit-from').value,
+          auditTo: document.getElementById('audit-to').value,
+          taxableAmount: document.getElementById('audit-taxable').value,
+          expensePeriod: document.getElementById('audit-expense-period').value,
+          remarks: document.getElementById('audit-remarks').value || ''
+        };
+        break;
+        
+      case 'FAR':
+        data = {
+          description: document.getElementById('far-description').value,
+          serviceDate: document.getElementById('far-date').value,
+          taxableAmount: document.getElementById('far-taxable').value,
+          expenseIfAny: document.getElementById('far-expense').value || 0,
+          remarks: document.getElementById('far-remarks').value || ''
+        };
+        break;
+        
+      case 'Stock Audit':
+        data = {
+          description: document.getElementById('stock-description').value,
+          fromDate: document.getElementById('stock-from').value,
+          toDate: document.getElementById('stock-to').value,
+          locationName: document.getElementById('stock-location').value,
+          numberOfPersons: document.getElementById('stock-persons').value,
+          totalManDays: document.getElementById('stock-mandays').value,
+          ratePerManDay: document.getElementById('stock-rate-mandays').value,
+          taxableAmount: document.getElementById('stock-taxable').value
+        };
+        break;
+        
+      case 'Certificate':
+        data = {
+          description: document.getElementById('cert-description').value,
+          certificateDate: document.getElementById('cert-date').value,
+          certificateType: document.getElementById('cert-type').value,
+          udin: document.getElementById('cert-udin').value,
+          taxableAmount: document.getElementById('cert-taxable').value
+        };
+        break;
+        
+      case 'Special Assignment':
+        data = {
+          description: document.getElementById('assignment-description').value,
+          assignmentDesc: document.getElementById('assignment-desc').value,
+          startDate: document.getElementById('assignment-start').value,
+          endDate: document.getElementById('assignment-end').value,
+          billingType: document.getElementById('assignment-billing').value,
+          rate: document.getElementById('assignment-rate').value,
+          quantity: document.getElementById('assignment-quantity').value || 0
+        };
+        break;
+        
+      case 'Statutory Audit':
+        data = {
+          description: document.getElementById('statutory-description').value,
+          financialYear: document.getElementById('statutory-fy').value,
+          auditType: document.getElementById('statutory-type').value,
+          turnover: document.getElementById('statutory-turnover').value,
+          fees: document.getElementById('statutory-fees').value
+        };
+        break;
+        
+      case 'Accounting':
+        data = {
+          description: document.getElementById('accounting-description').value,
+          serviceFrom: document.getElementById('accounting-from').value,
+          serviceTo: document.getElementById('accounting-to').value,
+          serviceType: document.getElementById('accounting-type').value,
+          monthlyCharges: document.getElementById('accounting-monthly').value,
+          months: document.getElementById('accounting-months').value
+        };
+        break;
+        
+      case 'Retainership':
+        data = {
+          description: document.getElementById('retainer-description').value,
+          retainerFrom: document.getElementById('retainer-from').value,
+          retainerTo: document.getElementById('retainer-to').value,
+          servicesCovered: document.getElementById('retainer-services').value,
+          monthlyRetainer: document.getElementById('retainer-monthly').value,
+          months: document.getElementById('retainer-months').value
+        };
+        break;
+    }
+    
+    // Validate required fields (skip empty optional fields like remarks)
+    for (let key in data) {
+      if (!data[key] && data[key] !== 0 && !['remarks', 'expenseIfAny', 'quantity'].includes(key)) {
+        alert(`Please fill all required fields for ${serviceType}.`);
+        return null;
+      }
+    }
+    
+    return data;
+  } catch (error) {
+    alert('Error collecting form data. Please check all fields.');
+    return null;
+  }
+}
+
+function generateServiceInvoice(serviceType) {
+  const client = document.getElementById('invoice-client').value;
+  
+  if (!client) {
+    alert("Please select a client.");
+    return;
+  }
+
+  const generateBtn = document.querySelector(`button[onclick="generateServiceInvoice('${serviceType}')"]`);
+  setLoading(generateBtn, true, "Generating...");
+
+  // Collect service-specific data
+  const serviceData = collectServiceData(serviceType);
+  
+  if (!serviceData) {
+    setLoading(generateBtn, false, `Generate ${serviceType} Invoice`);
+    return;
+  }
+
+  fetch(scriptURL, {
+    method: 'POST',
+    body: new URLSearchParams({
+      action: 'createServiceInvoice',
+      client,
+      serviceType,
+      serviceData: JSON.stringify(serviceData),
+      adminCode: currentUser.code
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      alert(`✅ ${serviceType} invoice generated successfully.`);
+      // Clear form
+      document.getElementById('invoice-client').value = '';
+      document.getElementById('nature-of-service').value = '';
+      document.getElementById('service-forms').innerHTML = '';
+    } else {
+      alert(data.message || `❌ ${serviceType} invoice generation failed.`);
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert(`❌ Error generating ${serviceType} invoice.`);
+  })
+  .finally(() => setLoading(generateBtn, false, `Generate ${serviceType} Invoice`));
+}
+
+function showClientListCheck() {
+  hideAllSections();
+  document.getElementById('client-list-section').classList.remove('hidden');
+  // Set today's date as default
+  document.getElementById('client-check-date').value = new Date().toISOString().split('T')[0];
+}
+
+function loadClientList() {
+  const selectedDate = document.getElementById('client-check-date').value;
+  
+  if (!selectedDate) {
+    alert('Please select a date.');
+    return;
+  }
+
+  const loadBtn = document.querySelector('button[onclick="loadClientList()"]');
+  setLoading(loadBtn, true, "Loading...");
+
+  fetch(scriptURL + `?action=checkClientList&date=${selectedDate}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        displayClientList(data);
+      } else {
+        alert(data.message || 'Error loading client list.');
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Error loading client list.');
+    })
+    .finally(() => {
+      setLoading(loadBtn, false, "Check Clients");
+    });
+}
+
+function displayClientList(data) {
+  const withAttendanceDiv = document.getElementById('clients-with-attendance');
+  const withoutAttendanceDiv = document.getElementById('clients-without-attendance');
+  
+  // Display Clients WITH attendance
+  if (data.clientsWithAttendance && data.clientsWithAttendance.length > 0) {
+    let withAttendanceHtml = '<h4 style="color: green;">Clients with Attendance:</h4>';
+    withAttendanceHtml += '<table><tr><th>Client Name</th><th>Employee Count</th></tr>';
+    
+    data.clientsWithAttendance.forEach(client => {
+      withAttendanceHtml += `<tr>
+        <td>${client.name || 'N/A'}</td>
+        <td>${client.employeeCount || 0}</td>
+      </tr>`;
+    });
+    
+    withAttendanceHtml += '</table>';
+    withAttendanceDiv.innerHTML = withAttendanceHtml;
+  } else {
+    withAttendanceDiv.innerHTML = '<h4 style="color: green;">Clients with Attendance:</h4><p>No clients have attendance marked.</p>';
+  }
+  
+  // Display Clients WITHOUT attendance
+  if (data.clientsWithoutAttendance && data.clientsWithoutAttendance.length > 0) {
+    let withoutAttendanceHtml = '<h4 style="color: red;">Clients without Attendance:</h4>';
+    withoutAttendanceHtml += '<table><tr><th>Client Name</th></tr>';
+    
+    data.clientsWithoutAttendance.forEach(client => {
+      withoutAttendanceHtml += `<tr>
+        <td>${client.name || client || 'N/A'}</td>
+      </tr>`;
+    });
+    
+    withoutAttendanceHtml += '</table>';
+    withoutAttendanceDiv.innerHTML = withoutAttendanceHtml;
+  } else {
+    withoutAttendanceDiv.innerHTML = '<h4 style="color: red;">Clients without Attendance:</h4><p>All clients have attendance marked.</p>';
+  }
+}
+
+function showHoursReportOptions() {
+  const reportType = document.getElementById('hours-report-type').value;
+  const employeeOptions = document.getElementById('employee-wise-options');
+  const dateRangeOptions = document.getElementById('date-range-options');
+  const resultsDiv = document.getElementById('hours-report-results');
+  
+  // Clear previous results
+  resultsDiv.innerHTML = '';
+  
+  if (reportType === 'employee-wise') {
+    employeeOptions.classList.remove('hidden');
+    dateRangeOptions.classList.remove('hidden');
+  } else if (reportType === 'client-wise') {
+    employeeOptions.classList.add('hidden');
+    dateRangeOptions.classList.remove('hidden');
+  } else {
+    employeeOptions.classList.add('hidden');
+    dateRangeOptions.classList.add('hidden');
+  }
+}
+
+function loadAuditEmployees() {
+  fetch(scriptURL + '?action=getAuditEmployees')
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success' && data.employees) {
+        const employeeSelect = document.getElementById('employee-select');
+        employeeSelect.innerHTML = '<option value="">-- Select Employee --</option>';
+        
+        data.employees.forEach(employee => {
+          const option = document.createElement('option');
+          option.value = employee.code;
+          option.textContent = `${employee.name} (${employee.code})`;
+          employeeSelect.appendChild(option);
+        });
+      }
+    })
+    .catch(err => console.error('Error loading audit employees:', err));
+}
+
+function generateHoursReport() {
+  const reportType = document.getElementById('hours-report-type').value;
+  const fromDate = document.getElementById('hours-from-date').value;
+  const toDate = document.getElementById('hours-to-date').value;
+  
+  if (!reportType || !fromDate || !toDate) {
+    alert('Please fill all required fields.');
+    return;
+  }
+  
+  if (new Date(fromDate) > new Date(toDate)) {
+    alert('From date cannot be after To date.');
+    return;
+  }
+  
+  let employeeCode = '';
+  if (reportType === 'employee-wise') {
+    employeeCode = document.getElementById('employee-select').value;
+    if (!employeeCode) {
+      alert('Please select an employee.');
+      return;
+    }
+  }
+  
+  const generateBtn = document.querySelector('button[onclick="generateHoursReport()"]');
+  setLoading(generateBtn, true, "Generating Report...");
+  
+  const params = new URLSearchParams({
+    action: 'getHoursBookedReport',
+    reportType: reportType,
+    fromDate: fromDate,
+    toDate: toDate
+  });
+  
+  if (employeeCode) {
+    params.append('employeeCode', employeeCode);
+  }
+  
+  fetch(scriptURL + '?' + params.toString())
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        displayHoursReport(data, reportType);
+      } else {
+        alert(data.message || 'Error generating report.');
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Error generating report.');
+    })
+    .finally(() => setLoading(generateBtn, false, "Generate Report"));
+}
+
+function displayHoursReport(data, reportType) {
+  const resultsDiv = document.getElementById('hours-report-results');
+  let html = '';
+  
+  if (reportType === 'employee-wise') {
+    html = `
+      <h4 style="color: #007bff;">Employee Hours Report: ${data.employeeName}</h4>
+      <p><strong>Date Range:</strong> ${data.fromDate} to ${data.toDate}</p>
+      <p><strong>Total Hours:</strong> ${data.totalHours} hours</p>
+      
+      <h5>Top 5 Clients (Hours Booked):</h5>
+    `;
+    
+    if (data.clientHours && data.clientHours.length > 0) {
+      html += '<table><tr><th>Rank</th><th>Client Name</th><th>Hours Booked</th><th>Percentage</th></tr>';
+      
+      data.clientHours.forEach((client, index) => {
+        const percentage = data.totalHours > 0 ? ((client.hours / data.totalHours) * 100).toFixed(1) : 0;
+        html += `<tr>
+          <td>${index + 1}</td>
+          <td>${client.clientName}</td>
+          <td>${client.hours}</td>
+          <td>${percentage}%</td>
+        </tr>`;
+      });
+      
+      html += '</table>';
+    } else {
+      html += '<p>No hours booked for this employee in the selected period.</p>';
+    }
+    
+  } else if (reportType === 'client-wise') {
+    html = `
+      <h4 style="color: #007bff;">Client-wise Hours Report</h4>
+      <p><strong>Date Range:</strong> ${data.fromDate} to ${data.toDate}</p>
+      <p><strong>Total Hours (All Clients):</strong> ${data.totalHours} hours</p>
+      
+      <h5>Client-wise Breakdown:</h5>
+    `;
+    
+    if (data.clientHours && data.clientHours.length > 0) {
+      html += '<table><tr><th>Client Name</th><th>Total Hours</th><th>Percentage</th></tr>';
+      
+      data.clientHours.forEach(client => {
+        const percentage = data.totalHours > 0 ? ((client.hours / data.totalHours) * 100).toFixed(1) : 0;
+        html += `<tr>
+          <td>${client.clientName}</td>
+          <td>${client.hours}</td>
+          <td>${percentage}%</td>
+        </tr>`;
+      });
+      
+      html += '</table>';
+    } else {
+      html += '<p>No hours booked for any client in the selected period.</p>';
+    }
+  }
+  
+  resultsDiv.innerHTML = html;
+}
+
+</script>
   </script>
 </body>
 </html>
