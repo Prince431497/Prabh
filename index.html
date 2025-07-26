@@ -1594,23 +1594,26 @@ function displayHoursReport(data, reportType) {
     html = `
       <h4 style="color: #007bff;">Employee Hours Report: ${data.employeeName}</h4>
       <p><strong>Date Range:</strong> ${data.fromDate} to ${data.toDate}</p>
-      <p><strong>Total Hours:</strong> ${data.totalHours} hours</p>
-      
-      <h5>Top 5 Clients (Hours Booked):</h5>
+<p><strong>Total Hours:</strong> ${data.totalHours} hours</p>
+      <p><strong>Total Cost Incurred:</strong> ₹${(data.totalCost || 0).toLocaleString()}</p>      
+<h5>Top 5 Clients (Hours Booked):</h5>
     `;
     
     if (data.clientHours && data.clientHours.length > 0) {
-      html += '<table><tr><th>Rank</th><th>Client Name</th><th>Hours Booked</th><th>Percentage</th></tr>';
+      html += '<table><tr><th>Rank</th><th>Client Name</th><th>Hours Booked</th><th>Cost Incurred</th><th>Percentage</th></tr>';
       
       data.clientHours.forEach((client, index) => {
         const percentage = data.totalHours > 0 ? ((client.hours / data.totalHours) * 100).toFixed(1) : 0;
+        const costIncurred = client.costIncurred || 0;
         html += `<tr>
           <td>${index + 1}</td>
           <td>${client.clientName}</td>
           <td>${client.hours}</td>
+          <td>₹${costIncurred.toLocaleString()}</td>
           <td>${percentage}%</td>
         </tr>`;
-      });
+      });      
+     
       
       html += '</table>';
     } else {
@@ -1622,21 +1625,25 @@ function displayHoursReport(data, reportType) {
       <h4 style="color: #007bff;">Client-wise Hours Report</h4>
       <p><strong>Date Range:</strong> ${data.fromDate} to ${data.toDate}</p>
       <p><strong>Total Hours (All Clients):</strong> ${data.totalHours} hours</p>
-      
-      <h5>Client-wise Breakdown:</h5>
+      <p><strong>Total Cost Incurred (All Clients):</strong> ₹${(data.totalCost || 0).toLocaleString()}</p>
+<h5>Client-wise Breakdown:</h5>
     `;
     
     if (data.clientHours && data.clientHours.length > 0) {
-      html += '<table><tr><th>Client Name</th><th>Total Hours</th><th>Percentage</th></tr>';
+      html += '<table><tr><th>Client Name</th><th>Total Hours</th><th>Cost Incurred</th><th>Percentage</th></tr>';
       
       data.clientHours.forEach(client => {
         const percentage = data.totalHours > 0 ? ((client.hours / data.totalHours) * 100).toFixed(1) : 0;
+        const costIncurred = client.costIncurred || 0;
         html += `<tr>
           <td>${client.clientName}</td>
           <td>${client.hours}</td>
+          <td>₹${costIncurred.toLocaleString()}</td>
           <td>${percentage}%</td>
         </tr>`;
-      });
+      });      
+      
+
       
       html += '</table>';
     } else {
