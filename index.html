@@ -1094,7 +1094,7 @@ const blob = new Blob([data.csvData], { type: 'text/csv' });
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);  
-alert("✅ Timesheet downloaded.");
+alert("✅ Attendance downloaded.");
         backToMenu();
       } else {
         alert(data.message || "❌ Unable to download Attendance.");
@@ -1153,8 +1153,8 @@ function downloadTimesheet() {
 
 
 function downloadExpense() {
-  const start = document.getElementById('ts-start').value;
-  const end = document.getElementById('ts-end').value;
+  const start = document.getElementById('exp-start').value;
+  const end = document.getElementById('exp-end').value;
   const downloadBtn = document.querySelector('button[onclick="downloadExpense()"]');
 
   if (!start || !end) {
